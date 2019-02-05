@@ -1,6 +1,10 @@
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -9,6 +13,7 @@ import java.util.Scanner;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
@@ -26,8 +31,8 @@ public class SpotifyClient {
 	private static final int SERVER_PORT = 8080;
 	private static final String SERVER_HOST = new String("localhost");
 
-	private SourceDataLine line = null;
-	private AudioInputStream din = null;
+	private SourceDataLine line;
+	private AudioInputStream ais;
 
 	public static void main(String[] args) throws IOException, UnsupportedAudioFileException {
 
@@ -107,8 +112,6 @@ public class SpotifyClient {
 
 	private synchronized void play(String msg, Scanner scanner) throws UnsupportedAudioFileException, IOException {
 
-		// dataLine.write(byte[] b, int off, int len);
-
 		writer.println(msg);
 
 		try {
@@ -121,59 +124,44 @@ public class SpotifyClient {
 
 					if (tokens.length != 7) {
 
-						// System.out.println(tokens[0]);
 						System.out.println("Error in playing the song!");
 						break;
 					}
 
-					File file = new File("./resources/Arctic_Monkeys-Do_I_Wanna_Know.wav");
-					AudioInputStream in = AudioSystem.getAudioInputStream(file);
-					AudioFormat baseFormat = in.getFormat();
-					AudioFormat decodedFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
-							baseFormat.getSampleRate(), 16, baseFormat.getChannels(), baseFormat.getChannels() * 2,
-							baseFormat.getSampleRate(), false);
-					din = AudioSystem.getAudioInputStream(decodedFormat, in);
+					AudioFormat.Encoding encoding = new AudioFormat.Encoding(tokens[0]);
+					float sampleRate = Float.parseFloat(tokens[1]);
+					int sampleSizeInBits = Integer.parseInt(tokens[2]);
+					int channels = Integer.parseInt(tokens[3]);
+					int frameSize = Integer.parseInt(tokens[4]);
+					float frameRate = Float.parseFloat(tokens[5]);
+					boolean bigEndian = Boolean.parseBoolean(tokens[6]);
+
+					AudioFormat decodedFormat = new AudioFormat(encoding, sampleRate, sampleSizeInBits, channels,
+							frameSize, frameRate, bigEndian);
+					
+					InputStream in = clientSocket.getInputStream();
+					
+					ais = AudioSystem.getAudioInputStream(in);					
+					
 					DataLine.Info info = new DataLine.Info(SourceDataLine.class, decodedFormat);
 					line = (SourceDataLine) AudioSystem.getLine(info);
+
 					if (line != null) {
-						line.open(decodedFormat);
 						byte[] data = new byte[4096];
-						// Start
-						line.start();
 						int nBytesRead;
 						
-						System.out.println("ehooo");
-						while ((nBytesRead = din.read(data, 0, data.length)) != -1) {
+						line.open(decodedFormat);				
+						line.start();
+						
+						while ((nBytesRead = ais.read(data, 0, data.length)) != -1) {
 							line.write(data, 0, nBytesRead);
-							
-							if(scanner.hasNextLine()) {
-								break;
-							}
-							
 						}
-
-						writer.println("stop");
-						
-						
-
-						// Stop
+					
 						line.drain();
 						line.stop();
 						line.close();
-						din.close();
+						ais.close();
 					}
-
-					/*
-					 * AudioFormat.Encoding encoding = new AudioFormat.Encoding(tokens[0]); float
-					 * sampleRate = Float.parseFloat(tokens[1]); int sampleSizeInBits =
-					 * Integer.parseInt(tokens[2]); int channels = Integer.parseInt(tokens[3]); int
-					 * frameSize = Integer.parseInt(tokens[4]); float frameRate =
-					 * Float.parseFloat(tokens[5]); boolean bigEndian =
-					 * Boolean.parseBoolean(tokens[6]);
-					 * 
-					 * AudioFormat decodedFormat = new AudioFormat(encoding, sampleRate,
-					 * sampleSizeInBits, channels, frameSize, frameRate, bigEndian);
-					 */
 				}
 			}
 		} catch (NumberFormatException e) {
@@ -187,10 +175,16 @@ public class SpotifyClient {
 		}
 	}
 
-	/*
-	 * private synchronized void stop() { try { line.drain(); line.stop();
-	 * line.close(); din.close(); } catch (IOException e) {
-	 * 
-	 * e.printStackTrace(); } }
-	 */
+	private synchronized void stop() {
+		try {
+			line.drain();
+			line.stop();
+			line.close();
+			ais.close();
+		} catch (IOException e) {
+
+			e.printStackTrace();
+		}
+	}
+
 }

@@ -1,6 +1,8 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -20,9 +22,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+import javax.sound.sampled.TargetDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
 public class CommunicationUtility {
@@ -38,6 +43,9 @@ public class CommunicationUtility {
 	private boolean onlineUser;
 	private boolean disconnectedUser;
 	private boolean playingSong;
+
+	private SourceDataLine line;
+	private AudioInputStream din;
 
 	CommunicationUtility(Socket socket) {
 
@@ -424,41 +432,65 @@ public class CommunicationUtility {
 	private void playTheSong(String song) {
 
 		try {
+
+			/*
+			 * format = new AudioFormat(sampleRate, 16, 1, true, false); dataLineInfo = new
+			 * DataLine.Info(SourceDataLine.class, format); sourceDataLine =
+			 * (SourceDataLine) AudioSystem.getLine(dataLineInfo);
+			 * sourceDataLine.open(format); sourceDataLine.start();
+			 * 
+			 */
+
+			File file = new File("./resources/" + song + ".wav");
+			AudioInputStream in = AudioSystem.getAudioInputStream(file);
 			
-		/*	format = new AudioFormat(sampleRate, 16, 1, true, false);
-	        dataLineInfo = new DataLine.Info(SourceDataLine.class, format);
-	        sourceDataLine = (SourceDataLine) AudioSystem.getLine(dataLineInfo);
-	        sourceDataLine.open(format);
-	        sourceDataLine.start();
-			
-		*/	
-			
-		
-			AudioFormat audioFormat = AudioSystem.getAudioInputStream(new File("./resources/" + song + ".wav"))
-					.getFormat();
+
+			AudioFormat audioFormat = in.getFormat();
 
 			writer.println(audioFormat.getEncoding() + " " + audioFormat.getSampleRate() + " "
 					+ audioFormat.getSampleSizeInBits() + " " + audioFormat.getChannels() + " "
 					+ audioFormat.getFrameSize() + " " + audioFormat.getFrameRate() + " " + audioFormat.isBigEndian());
-/*
-			DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat);
-			DataLine dataLine = (SourceDataLine) AudioSystem.getLine(info);
-			
-			if (dataLine != null) {
-				dataLine.open(audioFormat);
+
+			/*
+			AudioFormat baseFormat = in.getFormat();
+			AudioFormat decodedFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, baseFormat.getSampleRate(), 16,
+					baseFormat.getChannels(), baseFormat.getChannels() * 2, baseFormat.getSampleRate(), false);
+			din = AudioSystem.getAudioInputStream(decodedFormat, in);
+			DataLine.Info info = new DataLine.Info(SourceDataLine.class, decodedFormat);
+			line = (SourceDataLine) AudioSystem.getLine(info);
+			if (line != null) {
+				line.open(decodedFormat);
 				byte[] data = new byte[4096];
 				// Start
-				dataLine.start();
+				line.start();
 				int nBytesRead;
-				while ((nBytesRead = audio.read(data, 0, data.length)) != -1) {
-					dataLine.write(data, 0, nBytesRead);
+				while ((nBytesRead = din.read(data, 0, data.length)) != -1) {
+					out.write(data, 0, nBytesRead);
 				}
 				// Stop
-				dataLine.drain();
-				dataLine.stop();
-				dataLine.close();
-				audio.close();
-	*/		
+				line.drain();
+				line.stop();
+				line.close();
+				din.close();
+				
+			}*/
+			
+			
+			/*
+			 * 
+			 * byte buffer[] = new byte[2048]; int count; while ((count = in.read(buffer))
+			 * != -1) { out.write(buffer, 0, count); }
+			 * 
+			 * 
+			 * DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat);
+			 * DataLine dataLine = (SourceDataLine) AudioSystem.getLine(info);
+			 * 
+			 * if (dataLine != null) { dataLine.open(audioFormat); byte[] data = new
+			 * byte[4096]; // Start dataLine.start(); int nBytesRead; while ((nBytesRead =
+			 * audio.read(data, 0, data.length)) != -1) { dataLine.write(data, 0,
+			 * nBytesRead); } // Stop dataLine.drain(); dataLine.stop(); dataLine.close();
+			 * audio.close();
+			 */
 			int num = allSongs.get(song);
 			num++;
 			allSongs.put(song, num);

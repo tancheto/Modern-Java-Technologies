@@ -1,3 +1,5 @@
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 
@@ -15,6 +17,8 @@ public class SourceDataLineTest {
 
 	public static void main(String[] args) throws UnsupportedAudioFileException, IOException, LineUnavailableException {
 
+		/*
+		
 		SourceDataLine line = null;
 		//FloatControl volumeControl = null;
 		//BooleanControl control = null;
@@ -42,6 +46,10 @@ public class SourceDataLineTest {
 			line.stop();
 			line.close();
 			din.close();
+			
+			
+			
+			
 		}
 
 		/*
@@ -54,5 +62,53 @@ public class SourceDataLineTest {
 		 * 
 		 * System.out.println("eho"); }
 		 */
+		
+		
+		DataOutputStream writer = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+		File file = new File("./resources/" + song + ".wav");
+		AudioInputStream in = AudioSystem.getAudioInputStream(file);
+		AudioFormat audioFormat = in.getFormat();
+		int count;
+		byte[] buffer = new byte[8192]; // or 4096, or more
+		while ((count = in.read(buffer)) > 0)
+		{
+		  writer.write(buffer, 0, count);
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 	}
 }
